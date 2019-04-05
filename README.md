@@ -12,6 +12,12 @@ Desafio ZxVentures Backend
 1) Acessar pelo console/prompt de comando a pasta do projeto ZxVentures.Backend.Tests
 2) Executar "dotnet tests ZxVentures.Backend.Tests.csproj"
 
+## Pequenas considerações acerca da API
+
+- Os PDVs já estão sendo carregados no banco.
+- A criação de um PDV não obecede ao Id que está sendo passado como parâmetro (o banco controla o seeding).
+- Não foi pedido mas há possibilidade de excluir um PDV para poder testar a criação do mesmo.
+
 ## Libraries Utilizadas
 
 ## GeoJSON
