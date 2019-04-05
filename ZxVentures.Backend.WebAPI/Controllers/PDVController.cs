@@ -2,18 +2,15 @@
 using System.Linq;
 using GeoJSON.Net.Geometry;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Examples;
 using ZxVentures.Backend.DAL.Entity;
-using ZxVentures.Backend.DAL.Interface;
 using ZxVentures.Backend.Model.Entities;
 using ZxVentures.Backend.Model.Models;
 using ZxVentures.Backend.Model.Utils;
 using ZxVentures.Backend.WebAPI.Model;
-using ZxVentures.Backend.WebAPI.Model.SwaggerExamples;
 
 namespace ZxVentures.Backend.WebAPI.Controllers
 {
@@ -29,52 +26,59 @@ namespace ZxVentures.Backend.WebAPI.Controllers
         }
 
         [HttpGet]
-        [SwaggerResponse(statusCode: 200, Type = typeof(IList<PontoDeVendaAPI>))]
+        [SwaggerResponse(statusCode: 200, Type = typeof(List<PontoDeVendaAPI>))]
+        [SwaggerResponse(statusCode: 204)]
         [SwaggerOperation(Summary = "Retorna uma lista com todos os PDVs", OperationId = "GetPDVs")]
         public ActionResult GetPDVs()
         {
-            var listaPdvs = _repo.All.ToList();
-            IList<PontoDeVendaAPI> listaPdvsApi = new List<PontoDeVendaAPI>();
-            listaPdvs.ForEach(q => listaPdvsApi.Add(q.ToAPI()));
-            return Ok(listaPdvsApi);
+            IList<PontoDeVendaAPI> listaPdvs = GetAllPdvs();
+            if (listaPdvs != null && listaPdvs.Count > 0)
+            {
+                return Ok(listaPdvs);
+            }
+            return NoContent();
         }
 
         [HttpGet("{id}")]
-        [SwaggerResponse(statusCode:200, Type = typeof(PontoDeVendaAPI))]
-        [SwaggerResponse(statusCode: 404)]
+        [SwaggerResponse(statusCode: 200, Type = typeof(PontoDeVendaAPI))]
+        [SwaggerResponse(statusCode: 204)]
         [SwaggerOperation(Summary = "Retorna um PDV de acordo com o {id}", OperationId = "GetPDV")]
         public ActionResult GetPDV(int id)
         {
-            var pdv = _repo.All.ToList().FirstOrDefault(q => q.Id == id);
+            var pdv = _repo.Get(id);
             if (pdv != null)
             {
                 return Ok(pdv.ToAPI());
             }
-            return NotFound();
+            return NoContent();
         }
 
         [HttpPost("FindClosest")]
         [SwaggerResponse(statusCode: 200, Type = typeof(PontoDeVendaAPI))]
-        [SwaggerResponse(statusCode: 404)]
+        [SwaggerResponse(statusCode: 204)]
+        [SwaggerResponse(statusCode: 422)]
         [SwaggerOperation(Summary = "Retorna o PDV mais perto que atenda o endereço", OperationId = "FindClosest")]
-        [SwaggerRequestExample(typeof(Address), typeof(AddressExample))]
-        public ActionResult FindClosest([FromBody]JObject obj)
+        public ActionResult FindClosest([FromBody][SwaggerParameter(description: @"Objeto utilizado para a busca é o Address do exemplo do desafio ({""address"":{""type"": ""Point"",""coordinates"": [-46.57421, -21.785741]}})")]JObject obj)
         {
             var adress = VerifyAddress(obj);
             if (adress != null)
             {
                 var pdv = FindClosestPDV(adress);
-                return Ok(pdv);
+                if (pdv != null)
+                {
+                    return Ok(pdv);
+                }
+                return NoContent();
             }
-            return NotFound();
+            return UnprocessableEntity(new ErrorModel() { ErrorMessage = "O tipo de objeto não está correto", StatusCode = 422 });
         }
 
         [HttpPost]
-        [SwaggerResponse(statusCode: 204)]
+        [SwaggerResponse(statusCode: 200, Type = typeof(PontoDeVendaAPI))]
         [SwaggerResponse(statusCode: 409)]
         [SwaggerResponse(statusCode: 422)]
         [SwaggerOperation(Summary = "Cria um novo PDV", OperationId = "CreatePDV")]
-        public ActionResult CreatePDV([FromBody]JObject obj)
+        public ActionResult CreatePDV([FromBody][SwaggerParameter(description: @"Objeto utilizado para adicionar um novo é o exemplo do desafio (somente o objeto, não uma lista)")]JObject obj)
         {
             var pdv = new PontoDeVenda();
             if (VerifyPDV(obj, out pdv))
@@ -83,7 +87,7 @@ namespace ZxVentures.Backend.WebAPI.Controllers
                 if (cnpj == null)
                 {
                     _repo.Add(pdv);
-                    return Ok(pdv);
+                    return Ok(pdv.ToAPI());
                 }
                 return Conflict(new ErrorModel() { ErrorMessage = "CNPJ já existente", StatusCode = 409 });
             }
@@ -100,6 +104,14 @@ namespace ZxVentures.Backend.WebAPI.Controllers
         }
 
         #region Metodos Privados
+
+        private IList<PontoDeVendaAPI> GetAllPdvs()
+        {
+            var listaPdvs = _repo.All.ToList();
+            IList<PontoDeVendaAPI> listaPdvsApi = new List<PontoDeVendaAPI>();
+            listaPdvs.ForEach(q => listaPdvsApi.Add(q.ToAPI()));
+            return listaPdvsApi;
+        }
 
         private bool VerifyPDV(JObject obj, out PontoDeVenda pdv)
         {
