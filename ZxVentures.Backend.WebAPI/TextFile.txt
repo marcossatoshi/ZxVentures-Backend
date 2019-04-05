@@ -1,0 +1,11 @@
+﻿CREATE TABLE [dbo].[PontoDeVenda] (
+    [Id]                 INT  IDENTITY(1,1) NOT NULL,
+    [TradingName]        NVARCHAR (100) NOT NULL,
+    [OwnerName]          NVARCHAR (100) NOT NULL,
+    [Document]           NVARCHAR (20)  NOT NULL,
+    [AddressType]        INT            NOT NULL,
+    [AddressCoordinates] NVARCHAR (MAX) NOT NULL,
+    [CoverageArea]       NVARCHAR (MAX) NOT NULL,
+    [CoverageAreaType]   INT            NOT NULL,
+    PRIMARY KEY CLUSTERED ([Id] ASC)
+);
